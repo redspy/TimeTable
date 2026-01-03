@@ -212,100 +212,87 @@ function setupInteractions(card, eventData) {
             // card.style.transform = `translate(${moveEvent.clientX - startX}px, ${moveEvent.clientY - startY}px)`;
             // This is complex to get right with column logic.
             // Let's implement "Click to Edit"? No user asked for drag.
-            // "이리저리 옮겨가면서" -> implies drag.
-        };
+            const initialParent = card.parentElement;
 
-        // Simplified Drag: 
-        // We will calculate the new day/time based on where the mouse is RELEASED.
-        // While dragging, we just follow mouse.
+            const dragProxy = card.cloneNode(true);
+            dragProxy.classList.add('dragging');
+            dragProxy.style.position = 'fixed';
+            dragProxy.style.width = getComputedStyle(card).width;
+            dragProxy.style.height = getComputedStyle(card).height;
+            dragProxy.style.zIndex = 1000;
+            dragProxy.style.pointerEvents = 'none';
+            dragProxy.style.display = 'none'; // Hide initially until moved
+            document.body.appendChild(dragProxy);
 
-        const initialParent = card.parentElement;
-        const rect = initialParent.getBoundingClientRect(); // Column rect
-        const containerRect = gridContainer.getBoundingClientRect();
+            // Don't hide original yet. Only when moved.
+            // card.style.opacity = '0.3';
 
-        // Clone card for dragging visual
-        const dragProxy = card.cloneNode(true);
-        dragProxy.classList.add('dragging');
-        dragProxy.style.position = 'fixed';
-        dragProxy.style.width = getComputedStyle(card).width;
-        dragProxy.style.height = getComputedStyle(card).height;
-        dragProxy.style.zIndex = 1000;
-        dragProxy.style.pointerEvents = 'none'; // Allow clicks to pass through for dblclick
-        document.body.appendChild(dragProxy);
+            const moveAt = (pageX, pageY) => {
+                dragProxy.style.left = pageX - shiftX + 'px';
+                dragProxy.style.top = pageY - shiftY + 'px';
+            };
 
-        // Hide original
-        card.style.opacity = '0.3';
+            const onMove = (event) => {
+                // Check threshold to detect actual drag vs jitter
+                if (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5) {
+                    clearTimeout(longPressTimer); // Cancel delete
+                    isDrag = true;
 
-        const moveAt = (pageX, pageY) => {
-            dragProxy.style.left = pageX - shiftX + 'px';
-            dragProxy.style.top = pageY - shiftY + 'px';
-        };
-
-        moveAt(e.pageX, e.pageY);
-
-        const onMove = (event) => {
-            moveAt(event.pageX, event.pageY);
-        };
-
-        const onUp = (event) => {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            dragProxy.remove();
-            card.style.opacity = '1';
-            card.classList.remove('dragging');
-
-            // Hit test
-            // 1. Identify Column
-            const cols = document.querySelectorAll('.grid-col');
-            let foundColIndex = -1;
-
-            cols.forEach((col, index) => {
-                const r = col.getBoundingClientRect();
-                if (event.clientX >= r.left && event.clientX <= r.right &&
-                    event.clientY >= r.top && event.clientY <= r.bottom) {
-                    foundColIndex = index;
+                    // Now start showing drag
+                    dragProxy.style.display = 'block';
+                    card.style.opacity = '0.3';
+                    moveAt(event.pageX, event.pageY);
                 }
-            });
+            };
 
-            // Dragged OUTSIDE grid -> Delete
-            if (foundColIndex === -1) {
-                if (confirm('일정을 삭제하시겠습니까?')) {
-                    deleteEvent(eventData.id);
+            const onUp = (event) => {
+                clearTimeout(longPressTimer);
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                dragProxy.remove();
+                card.style.opacity = '1';
+                card.classList.remove('dragging');
+
+                if (!isDrag) return; // Verify it was a drag, not just a click/long-click
+
+                // Hit test
+                const cols = document.querySelectorAll('.grid-col');
+                let foundColIndex = -1;
+
+                cols.forEach((col, index) => {
+                    const r = col.getBoundingClientRect();
+                    if (event.clientX >= r.left && event.clientX <= r.right &&
+                        event.clientY >= r.top && event.clientY <= r.bottom) {
+                        foundColIndex = index;
+                    }
+                });
+
+                if (foundColIndex === -1) {
+                    // Revert if dropped outside (since we removed drag-to-delete)
+                    return;
                 }
-                return;
-            }
 
-            // 2. Identify Time
-            // Relative Y in the container
-            const containerRect = gridContainer.getBoundingClientRect();
-            const relY = event.clientY - containerRect.top - shiftY; // Adjust for grab offset
-            // Limit to valid range
-            // relY = Math.max(0, relY);
+                // Identify Time
+                const containerRect = gridContainer.getBoundingClientRect();
+                const relY = event.clientY - containerRect.top - shiftY;
 
-            // Convert pixels to minutes
-            let minutesFromStart = relY / PIXELS_PER_MIN;
-            // Add START_HOUR offset
-            let absoluteMinutes = minutesFromStart + (START_HOUR * 60);
+                let minutesFromStart = relY / PIXELS_PER_MIN;
+                let absoluteMinutes = minutesFromStart + (START_HOUR * 60);
+                absoluteMinutes = Math.round(absoluteMinutes / SNAP_MINUTES) * SNAP_MINUTES;
 
-            // Snap
-            absoluteMinutes = Math.round(absoluteMinutes / SNAP_MINUTES) * SNAP_MINUTES;
+                if (absoluteMinutes < START_HOUR * 60) absoluteMinutes = START_HOUR * 60;
 
-            // Boundaries
-            const maxMinutes = (END_HOUR * 60) - eventData.duration;
-            if (absoluteMinutes < START_HOUR * 60) absoluteMinutes = START_HOUR * 60;
-            // if (absoluteMinutes > maxMinutes) absoluteMinutes = maxMinutes; // Optional: restrict
+                const newStartTime = minutesToTimeString(absoluteMinutes);
 
-            const newStartTime = minutesToTimeString(absoluteMinutes);
+                updateEvent(eventData.id, {
+                    day: foundColIndex,
+                    startTime: newStartTime
+                });
+            };
 
-            updateEvent(eventData.id, {
-                day: foundColIndex,
-                startTime: newStartTime
-            });
-        };
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-    });
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
 
     // Double click to EDIT
     card.addEventListener('dblclick', () => {

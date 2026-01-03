@@ -41,6 +41,8 @@ body {
     height: 60px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    /* Push button to right */
     padding: 0 20px;
     border-bottom: 1px solid var(--border-color);
     background: #fff;
@@ -50,6 +52,21 @@ body {
 .main-header h1 {
     font-size: 1.2rem;
     font-weight: 700;
+}
+
+.header-add-btn {
+    padding: 8px 16px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.header-add-btn:hover {
+    background-color: #5000d6;
 }
 
 /* Timetable Layout */
