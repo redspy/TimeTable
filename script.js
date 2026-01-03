@@ -143,6 +143,26 @@ function createEventElement(event) {
 // Interactions
 function setupInteractions(card, eventData) {
     const handle = card.querySelector('.resize-handle');
+    let lastTapTime = 0;
+
+    const openEditModal = () => {
+        editingEventId = eventData.id;
+
+        // Fill form
+        eventNameInput.value = eventData.name;
+        startTimeInput.value = eventData.startTime;
+        durationInput.value = eventData.duration;
+
+        // Set Day
+        currentDayFilter = eventData.day;
+        document.querySelectorAll('.day-btn').forEach(btn => {
+            btn.classList.toggle('selected', parseInt(btn.dataset.day) === currentDayFilter);
+        });
+
+        modalOverlay.classList.add('active');
+        saveBtn.textContent = '수정하기';
+        deleteBtn.style.display = 'block'; // Show delete
+    };
 
     // Resize Logic
     handle.addEventListener('pointerdown', (e) => {
@@ -181,6 +201,15 @@ function setupInteractions(card, eventData) {
     card.addEventListener('pointerdown', (e) => {
         if (e.target.classList.contains('resize-handle')) return;
 
+        // Double Tap Detection
+        const now = Date.now();
+        if (now - lastTapTime < 300) {
+            openEditModal();
+            return;
+        }
+        lastTapTime = now;
+
+        // Critical for mobile: prevent scrolling and context menu
         e.preventDefault();
 
         try {
@@ -308,26 +337,6 @@ function setupInteractions(card, eventData) {
 
         document.addEventListener('pointermove', onPointerMove);
         document.addEventListener('pointerup', onPointerUp);
-    });
-
-    // Double click to EDIT
-    card.addEventListener('dblclick', () => {
-        editingEventId = eventData.id;
-
-        // Fill form
-        eventNameInput.value = eventData.name;
-        startTimeInput.value = eventData.startTime;
-        durationInput.value = eventData.duration;
-
-        // Set Day
-        currentDayFilter = eventData.day;
-        document.querySelectorAll('.day-btn').forEach(btn => {
-            btn.classList.toggle('selected', parseInt(btn.dataset.day) === currentDayFilter);
-        });
-
-        modalOverlay.classList.add('active');
-        saveBtn.textContent = '수정하기';
-        deleteBtn.style.display = 'block'; // Show delete
     });
 }
 
