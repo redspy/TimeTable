@@ -1,0 +1,355 @@
+:root {
+    --primary-color: #6200ea;
+    --text-color: #333;
+    --border-color: #e0e0e0;
+    --time-col-width: 60px;
+    --header-height: 50px;
+    --grid-row-height: 40px;
+    /* Represents 30 minutes */
+    --fab-size: 56px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+body {
+    background-color: #f5f5f5;
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    background: #fff;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+}
+
+.main-header {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: #fff;
+    z-index: 10;
+}
+
+.main-header h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+/* Timetable Layout */
+.timetable-wrapper {
+    flex: 1;
+    display: grid;
+    grid-template-columns: var(--time-col-width) 1fr;
+    grid-template-rows: var(--header-height) 1fr;
+    overflow: auto;
+    /* Scroll bar is here now */
+    position: relative;
+    /* Ensure scrollbar doesn't mess up layout, 
+       but primarily since everything is in one grid, they align to columns */
+}
+
+/* 1. Top Left Corner */
+.sticky-corner {
+    grid-column: 1;
+    grid-row: 1;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: #fff;
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+/* 2. Top Header (Days) */
+.days-header {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #fff;
+
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.day-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    border-right: 1px solid var(--border-color);
+    background: #fff;
+    /* Opaque so content doesn't show through */
+}
+
+.day-label:last-child {
+    border-right: none;
+}
+
+/* 3. Left Sidebar (Times) */
+.time-sidebar {
+    grid-column: 1;
+    grid-row: 2;
+    background: #fafafa;
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding-top: 10px;
+    z-index: 10;
+    /* Ideally sticky horizontally too? No, vertical scroll only usually. 
+       But if horizontal scroll needed, we'd need position sticky left:0. 
+       For now assume width fits or expands. */
+}
+
+.time-slot-label {
+    height: var(--grid-row-height);
+    text-align: right;
+    padding-right: 10px;
+    font-size: 0.8rem;
+    color: #888;
+    transform: translateY(-50%);
+    /* Center label on line */
+}
+
+/* 4. Main Grid content */
+.grid-container {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    background-size: 100% var(--grid-row-height);
+    background-image: linear-gradient(to bottom, var(--border-color) 1px, transparent 1px);
+    background-position: 0 -1px;
+}
+
+.grid-col {
+    border-right: 1px solid var(--border-color);
+    height: 100%;
+    position: relative;
+}
+
+.grid-col:last-child {
+    border-right: none;
+}
+
+/* Post-it Note Styles */
+.event-card {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 0.85rem;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    cursor: grab;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+    user-select: none;
+    z-index: 1;
+}
+
+.event-card:hover {
+    box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 2;
+}
+
+.event-card.dragging {
+    opacity: 0.7;
+    cursor: grabbing;
+    z-index: 100;
+    pointer-events: none;
+    /* Let element below receive hover if needed, but usually we move the element itself */
+}
+
+.event-name {
+    font-weight: 600;
+    pointer-events: none;
+}
+
+.event-time {
+    font-size: 0.75rem;
+    opacity: 0.8;
+    margin-top: 2px;
+    pointer-events: none;
+}
+
+.resize-handle {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    cursor: ns-resize;
+    /* background: rgba(0,0,0,0.1); */
+}
+
+/* Floating Action Button */
+.fab {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    width: var(--fab-size);
+    height: var(--fab-size);
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 10px rgba(98, 0, 234, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+    z-index: 20;
+}
+
+.fab:hover {
+    transform: scale(1.05);
+    background-color: #5000d6;
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-card {
+    background: white;
+    width: 90%;
+    max-width: 400px;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    transform: translateY(20px);
+    transition: transform 0.3s;
+}
+
+.modal-overlay.active .modal-card {
+    transform: translateY(0);
+}
+
+.modal-card h2 {
+    margin-bottom: 20px;
+    font-size: 1.25rem;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #555;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="time"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    outline: none;
+}
+
+input:focus {
+    border-color: var(--primary-color);
+}
+
+.day-selector {
+    display: flex;
+    gap: 5px;
+}
+
+.day-btn {
+    flex: 1;
+    padding: 8px 0;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.day-btn.selected {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.btn-cancel {
+    padding: 10px 20px;
+    background: #f5f5f5;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-save {
+    padding: 10px 20px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
