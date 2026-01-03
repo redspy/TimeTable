@@ -208,11 +208,35 @@ body {
     pointer-events: none;
 }
 
-.event-time {
+font-size: 0.75rem;
+opacity: 0.8;
+margin-top: 2px;
+pointer-events: none;
+}
+
+/* Small Event Styles (<= 30 mins) */
+.event-card.small-event {
+    padding: 2px 4px;
+    /* Tighter padding */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    /* Allow wrapping if needed, but try to fit */
+    overflow: hidden;
+}
+
+.event-card.small-event .event-name {
     font-size: 0.75rem;
-    opacity: 0.8;
-    margin-top: 2px;
-    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 4px;
+}
+
+.event-card.small-event .event-time {
+    font-size: 0.7rem;
+    margin-top: 0;
 }
 
 .resize-handle {

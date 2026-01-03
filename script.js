@@ -111,6 +111,9 @@ function renderEvents() {
 function createEventElement(event) {
     const div = document.createElement('div');
     div.className = 'event-card';
+    if (event.duration <= 30) {
+        div.classList.add('small-event');
+    }
     div.id = event.id;
     div.style.backgroundColor = event.color;
     div.style.touchAction = 'none'; // Prevent scroll on mobile
