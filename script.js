@@ -175,6 +175,8 @@ function setupInteractions(card, eventData) {
     // Drag Logic
     card.addEventListener('pointerdown', (e) => {
         if (e.target.classList.contains('resize-handle')) return;
+        e.preventDefault(); // Prevent default browser actions (scrolling, selection)
+        card.setPointerCapture(e.pointerId); // Robust tracking
 
         // Long Press Logic Variables
         let longPressTimer;
@@ -209,29 +211,30 @@ function setupInteractions(card, eventData) {
         const moveAt = (pageX, pageY) => {
             dragProxy.style.left = pageX - shiftX + 'px';
             dragProxy.style.top = pageY - shiftY + 'px';
-
-            // Auto scroll on mobile if near edges? 
-            // Browser might handle basics, but 'touch-action: none' prevents scroll.
-            // We might need custom scroll logic for perfect UX, but let's stick to drag first.
         };
 
         const onPointerMove = (event) => {
             // Check threshold to detect actual drag vs jitter
-            if (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5) {
+            if (!isDrag && (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5)) {
                 clearTimeout(longPressTimer); // Cancel delete
                 isDrag = true;
 
                 // Now start showing drag
                 dragProxy.style.display = 'block';
                 card.style.opacity = '0.3';
+            }
+
+            if (isDrag) {
                 moveAt(event.pageX, event.pageY);
             }
         };
 
         const onPointerUp = (event) => {
             clearTimeout(longPressTimer);
-            document.removeEventListener('pointermove', onPointerMove);
-            document.removeEventListener('pointerup', onPointerUp);
+            card.removeEventListener('pointermove', onPointerMove);
+            card.removeEventListener('pointerup', onPointerUp);
+            card.releasePointerCapture(e.pointerId);
+
             dragProxy.remove();
             card.style.opacity = '1';
 
@@ -274,8 +277,8 @@ function setupInteractions(card, eventData) {
             });
         };
 
-        document.addEventListener('pointermove', onPointerMove);
-        document.addEventListener('pointerup', onPointerUp);
+        card.addEventListener('pointermove', onPointerMove);
+        card.addEventListener('pointerup', onPointerUp);
     });
 
     // Double click to EDIT
