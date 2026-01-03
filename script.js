@@ -204,6 +204,8 @@ function setupInteractions(card, eventData) {
         // Double Tap Detection
         const now = Date.now();
         if (now - lastTapTime < 300) {
+            e.preventDefault(); // Prevent native click being generated
+            e.stopPropagation();
             openEditModal();
             return;
         }
