@@ -22,6 +22,7 @@ const timeSidebar = document.querySelector('.time-sidebar');
 const modalOverlay = document.getElementById('modalOverlay');
 const addBtn = document.getElementById('addBtn');
 const cancelBtn = document.getElementById('cancelBtn');
+const deleteBtn = document.getElementById('deleteBtn'); // New
 const saveBtn = document.getElementById('saveBtn');
 const daySelector = document.getElementById('daySelector');
 const eventNameInput = document.getElementById('eventName');
@@ -112,6 +113,8 @@ function createEventElement(event) {
     div.className = 'event-card';
     div.id = event.id;
     div.style.backgroundColor = event.color;
+    div.style.touchAction = 'none'; // Prevent scroll on mobile
+    div.style.touchAction = 'none'; // Explicitly set for mobile drag
 
     // Calculate Position and Height
     const startMinutes = timeStringToMinutes(event.startTime);
@@ -298,6 +301,7 @@ function setupInteractions(card, eventData) {
 
         modalOverlay.classList.add('active');
         saveBtn.textContent = '수정하기';
+        deleteBtn.style.display = 'block'; // Show delete
     });
 }
 
@@ -342,6 +346,7 @@ addBtn.addEventListener('click', () => {
     startTimeInput.value = ''; // Clear start time
     durationInput.value = ''; // Clear duration
     saveBtn.textContent = '추가하기';
+    deleteBtn.style.display = 'none'; // Hide delete
 
     // Reset day selector visual to default (Day 0)
     currentDayFilter = 0;
@@ -355,6 +360,13 @@ addBtn.addEventListener('click', () => {
 
 cancelBtn.addEventListener('click', () => {
     modalOverlay.classList.remove('active');
+});
+
+deleteBtn.addEventListener('click', () => {
+    if (editingEventId && confirm('정말 삭제하시겠습니까?')) {
+        deleteEvent(editingEventId);
+        modalOverlay.classList.remove('active');
+    }
 });
 
 modalOverlay.addEventListener('click', (e) => {
