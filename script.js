@@ -178,10 +178,17 @@ function setupInteractions(card, eventData) {
     // Drag Logic
     card.addEventListener('pointerdown', (e) => {
         if (e.target.classList.contains('resize-handle')) return;
-        e.preventDefault(); // Prevent default browser actions (scrolling, selection)
-        card.setPointerCapture(e.pointerId); // Robust tracking
 
-        // Long Press Logic Variables
+        // Critical for mobile: prevent scrolling and context menu
+        e.preventDefault();
+
+        try {
+            card.setPointerCapture(e.pointerId);
+        } catch (err) {
+            // Ignore if capture fails (e.g. not supported or already lost)
+        }
+
+        // Long Press Logic
         let longPressTimer;
         let isDrag = false;
         const LONG_PRESS_DURATION = 800; // ms
@@ -208,7 +215,7 @@ function setupInteractions(card, eventData) {
         dragProxy.style.height = getComputedStyle(card).height;
         dragProxy.style.zIndex = 1000;
         dragProxy.style.pointerEvents = 'none';
-        dragProxy.style.display = 'none'; // Hide initially until moved
+        dragProxy.style.display = 'none';
         document.body.appendChild(dragProxy);
 
         const moveAt = (pageX, pageY) => {
@@ -217,12 +224,11 @@ function setupInteractions(card, eventData) {
         };
 
         const onPointerMove = (event) => {
-            // Check threshold to detect actual drag vs jitter
+            // Check threshold
             if (!isDrag && (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5)) {
                 clearTimeout(longPressTimer); // Cancel delete
                 isDrag = true;
 
-                // Now start showing drag
                 dragProxy.style.display = 'block';
                 card.style.opacity = '0.3';
             }
@@ -234,9 +240,11 @@ function setupInteractions(card, eventData) {
 
         const onPointerUp = (event) => {
             clearTimeout(longPressTimer);
-            card.removeEventListener('pointermove', onPointerMove);
-            card.removeEventListener('pointerup', onPointerUp);
-            card.releasePointerCapture(e.pointerId);
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
+            try {
+                card.releasePointerCapture(e.pointerId);
+            } catch (err) { }
 
             dragProxy.remove();
             card.style.opacity = '1';
@@ -280,8 +288,9 @@ function setupInteractions(card, eventData) {
             });
         };
 
-        card.addEventListener('pointermove', onPointerMove);
-        card.addEventListener('pointerup', onPointerUp);
+        // Attach to DOCUMENT to ensure we catch moves outside the element
+        document.addEventListener('pointermove', onPointerMove);
+        document.addEventListener('pointerup', onPointerUp);
     });
 
     // Double click to EDIT
