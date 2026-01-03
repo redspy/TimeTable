@@ -261,7 +261,8 @@ function setupInteractions(card, eventData) {
 
             cols.forEach((col, index) => {
                 const r = col.getBoundingClientRect();
-                if (event.clientX >= r.left && event.clientX <= r.right) {
+                if (event.clientX >= r.left && event.clientX <= r.right &&
+                    event.clientY >= r.top && event.clientY <= r.bottom) {
                     foundColIndex = index;
                 }
             });
