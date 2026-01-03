@@ -186,6 +186,8 @@ body {
     z-index: 1;
     touch-action: none;
     /* Crucial for touch dragging */
+    -webkit-touch-callout: none;
+    /* iOS context menu */
 }
 
 .event-card:hover {

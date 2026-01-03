@@ -176,26 +176,43 @@ function setupInteractions(card, eventData) {
     });
 
     // Drag Logic
+    card.addEventListener('contextmenu', (e) => e.preventDefault()); // Prevent Context Menu
+
     card.addEventListener('pointerdown', (e) => {
         if (e.target.classList.contains('resize-handle')) return;
 
-        // Critical for mobile: prevent scrolling and context menu
         e.preventDefault();
 
         try {
             card.setPointerCapture(e.pointerId);
-        } catch (err) {
-            // Ignore if capture fails (e.g. not supported or already lost)
-        }
+        } catch (err) { }
 
         // Long Press Logic
         let longPressTimer;
         let isDrag = false;
         const LONG_PRESS_DURATION = 800; // ms
 
+        // Common Cleanup
+        const cleanup = () => {
+            clearTimeout(longPressTimer);
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
+            if (dragProxy.parentNode) dragProxy.remove();
+            card.style.opacity = '1';
+            card.classList.remove('dragging');
+            try {
+                if (card.hasPointerCapture(e.pointerId)) {
+                    card.releasePointerCapture(e.pointerId);
+                }
+            } catch (err) { }
+        };
+
         // Start Timer
         longPressTimer = setTimeout(() => {
             if (!isDrag) {
+                // Cleanup interaction before alert to prevent stuck listeners
+                cleanup();
+
                 if (confirm('일정을 삭제하시겠습니까?')) {
                     deleteEvent(eventData.id);
                 }
@@ -224,9 +241,8 @@ function setupInteractions(card, eventData) {
         };
 
         const onPointerMove = (event) => {
-            // Check threshold
             if (!isDrag && (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5)) {
-                clearTimeout(longPressTimer); // Cancel delete
+                clearTimeout(longPressTimer);
                 isDrag = true;
 
                 dragProxy.style.display = 'block';
@@ -239,20 +255,19 @@ function setupInteractions(card, eventData) {
         };
 
         const onPointerUp = (event) => {
-            clearTimeout(longPressTimer);
-            document.removeEventListener('pointermove', onPointerMove);
-            document.removeEventListener('pointerup', onPointerUp);
-            try {
-                card.releasePointerCapture(e.pointerId);
-            } catch (err) { }
+            // We use the shared cleanup, but we need to check isDrag logic *before* fully resetting if strictly needed,
+            // but here cleanup removes proxy/listeners which is what we want.
+            // We just need to capture the drop logic before cleanup or part of it.
 
-            dragProxy.remove();
-            card.style.opacity = '1';
+            // Logic flow:
+            // 1. Check if it was a valid drag drop?
 
             if (!isDrag) {
+                cleanup();
                 return;
             }
-            card.classList.remove('dragging');
+
+            // It was a drag. Do the hit test.
 
             // Hit test
             const cols = document.querySelectorAll('.grid-col');
@@ -266,14 +281,17 @@ function setupInteractions(card, eventData) {
                 }
             });
 
+            // Calculate before cleanup just in case, but cleanup doesn't affect calculation
+            const containerRect = gridContainer.getBoundingClientRect();
+            const relY = event.clientY - containerRect.top - shiftY;
+
+            cleanup(); // Remove proxy etc.
+
             if (foundColIndex === -1) {
                 return;
             }
 
             // Identify Time
-            const containerRect = gridContainer.getBoundingClientRect();
-            const relY = event.clientY - containerRect.top - shiftY;
-
             let minutesFromStart = relY / PIXELS_PER_MIN;
             let absoluteMinutes = minutesFromStart + (START_HOUR * 60);
             absoluteMinutes = Math.round(absoluteMinutes / SNAP_MINUTES) * SNAP_MINUTES;
@@ -288,7 +306,6 @@ function setupInteractions(card, eventData) {
             });
         };
 
-        // Attach to DOCUMENT to ensure we catch moves outside the element
         document.addEventListener('pointermove', onPointerMove);
         document.addEventListener('pointerup', onPointerUp);
     });
