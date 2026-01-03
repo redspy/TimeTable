@@ -184,6 +184,8 @@ body {
     transition: box-shadow 0.2s;
     user-select: none;
     z-index: 1;
+    touch-action: none;
+    /* Crucial for touch dragging */
 }
 
 .event-card:hover {

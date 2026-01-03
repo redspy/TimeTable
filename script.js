@@ -142,42 +142,38 @@ function setupInteractions(card, eventData) {
     const handle = card.querySelector('.resize-handle');
 
     // Resize Logic
-    handle.addEventListener('mousedown', (e) => {
+    handle.addEventListener('pointerdown', (e) => {
         e.stopPropagation(); // Prevent drag
+        card.setPointerCapture(e.pointerId); // Capture pointer for consistent tracking
+
         let startY = e.clientY;
         let startHeight = parseInt(getComputedStyle(card).height);
 
-        const onMouseMove = (moveEvent) => {
+        const onPointerMove = (moveEvent) => {
             const dy = moveEvent.clientY - startY;
             let newHeight = startHeight + dy;
-            // Snap to 10 mins (approx 13.33px)
-            // newHeight = Math.round(newHeight / snapPx) * snapPx; 
-            // Just visual update effectively? User wants flexible but snap. behavior.
-
             if (newHeight < 20) newHeight = 20;
             card.style.height = `${newHeight}px`;
         };
 
-        const onMouseUp = (upEvent) => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
+        const onPointerUp = (upEvent) => {
+            card.removeEventListener('pointermove', onPointerMove);
+            card.removeEventListener('pointerup', onPointerUp);
+            card.releasePointerCapture(e.pointerId);
 
-            // Finalize
             let finalHeight = parseInt(card.style.height);
-            // Convert back to minutes
             let duration = Math.round(finalHeight / PIXELS_PER_MIN);
-            // Snap duration to nearest SNAP_MINUTES
             duration = Math.round(duration / SNAP_MINUTES) * SNAP_MINUTES;
 
             updateEvent(eventData.id, { duration: duration });
         };
 
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+        card.addEventListener('pointermove', onPointerMove);
+        card.addEventListener('pointerup', onPointerUp);
     });
 
     // Drag Logic
-    card.addEventListener('mousedown', (e) => {
+    card.addEventListener('pointerdown', (e) => {
         if (e.target.classList.contains('resize-handle')) return;
 
         // Long Press Logic Variables
@@ -188,8 +184,6 @@ function setupInteractions(card, eventData) {
         // Start Timer
         longPressTimer = setTimeout(() => {
             if (!isDrag) {
-                // Trigger Long Press
-                // card.classList.add('shake-animation'); // Optional visual cue?
                 if (confirm('일정을 삭제하시겠습니까?')) {
                     deleteEvent(eventData.id);
                 }
@@ -215,9 +209,13 @@ function setupInteractions(card, eventData) {
         const moveAt = (pageX, pageY) => {
             dragProxy.style.left = pageX - shiftX + 'px';
             dragProxy.style.top = pageY - shiftY + 'px';
+
+            // Auto scroll on mobile if near edges? 
+            // Browser might handle basics, but 'touch-action: none' prevents scroll.
+            // We might need custom scroll logic for perfect UX, but let's stick to drag first.
         };
 
-        const onMove = (event) => {
+        const onPointerMove = (event) => {
             // Check threshold to detect actual drag vs jitter
             if (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5) {
                 clearTimeout(longPressTimer); // Cancel delete
@@ -230,10 +228,10 @@ function setupInteractions(card, eventData) {
             }
         };
 
-        const onUp = (event) => {
+        const onPointerUp = (event) => {
             clearTimeout(longPressTimer);
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
             dragProxy.remove();
             card.style.opacity = '1';
 
@@ -276,8 +274,8 @@ function setupInteractions(card, eventData) {
             });
         };
 
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
+        document.addEventListener('pointermove', onPointerMove);
+        document.addEventListener('pointerup', onPointerUp);
     });
 
     // Double click to EDIT
