@@ -411,3 +411,40 @@ input:focus {
     cursor: pointer;
     font-weight: 500;
 }
+
+/* Print Styles */
+@media print {
+    .app-container {
+        box-shadow: none;
+        max-width: none;
+        width: 100%;
+    }
+
+    /* Force background colors */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* High contrast borders */
+    :root {
+        --border-color: #000;
+    }
+
+    .grid-container {
+        /* Re-define gradient with black for print */
+        background-image: linear-gradient(to bottom, #000 1px, transparent 1px);
+    }
+
+    .event-card {
+        border: 1px solid #000;
+        box-shadow: none;
+    }
+
+    /* Hide UI elements */
+    .header-add-btn,
+    .fab,
+    .modal-overlay {
+        display: none !important;
+    }
+}
