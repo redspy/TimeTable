@@ -180,119 +180,105 @@ function setupInteractions(card, eventData) {
     card.addEventListener('mousedown', (e) => {
         if (e.target.classList.contains('resize-handle')) return;
 
-        card.classList.add('dragging');
+        // Long Press Logic Variables
+        let longPressTimer;
+        let isDrag = false;
+        const LONG_PRESS_DURATION = 800; // ms
+
+        // Start Timer
+        longPressTimer = setTimeout(() => {
+            if (!isDrag) {
+                // Trigger Long Press
+                // card.classList.add('shake-animation'); // Optional visual cue?
+                if (confirm('일정을 삭제하시겠습니까?')) {
+                    deleteEvent(eventData.id);
+                }
+            }
+        }, LONG_PRESS_DURATION);
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+
         let shiftX = e.clientX - card.getBoundingClientRect().left;
         let shiftY = e.clientY - card.getBoundingClientRect().top;
 
-        // Visual helper needs to move out of the column to body or container so it can float across columns
-        // Actually, easiest is to use fixed/absolute on body, but keeping it in flow is hard.
-        // Let's keep it simple: we compute nearest column on mouse up.
-        // For visual feedback, we might want to just let it slide.
+        const dragProxy = card.cloneNode(true);
+        dragProxy.classList.add('dragging');
+        dragProxy.style.position = 'fixed';
+        dragProxy.style.width = getComputedStyle(card).width;
+        dragProxy.style.height = getComputedStyle(card).height;
+        dragProxy.style.zIndex = 1000;
+        dragProxy.style.pointerEvents = 'none';
+        dragProxy.style.display = 'none'; // Hide initially until moved
+        document.body.appendChild(dragProxy);
 
-        // Strategy: When dragging, make position: fixed or absolute relative to window/container
-        // Use a ghost element or move the logic to container level?
-        // Let's try changing parent to gridContainer temporarily for smooth dragging
+        const moveAt = (pageX, pageY) => {
+            dragProxy.style.left = pageX - shiftX + 'px';
+            dragProxy.style.top = pageY - shiftY + 'px';
+        };
 
-        const originCol = card.parentElement;
-        const startLeft = card.getBoundingClientRect().left;
-        const startTop = card.getBoundingClientRect().top;
+        const onMove = (event) => {
+            // Check threshold to detect actual drag vs jitter
+            if (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5) {
+                clearTimeout(longPressTimer); // Cancel delete
+                isDrag = true;
 
-        // Placeholder to keep layout? Not needed for absolute pos.
+                // Now start showing drag
+                dragProxy.style.display = 'block';
+                card.style.opacity = '0.3';
+                moveAt(event.pageX, event.pageY);
+            }
+        };
 
-        const onMouseMove = (moveEvent) => {
-            // In a real robust app we'd move it to body. 
-            // We'll trust the user drags reasonably for this simple version.
-            // Or better: Change Top/Left based on delta
-            // Actually, we want to snap to columns.
+        const onUp = (event) => {
+            clearTimeout(longPressTimer);
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            dragProxy.remove();
+            card.style.opacity = '1';
 
-            // To support moving between columns cleanly, we probably should re-parent to the gridContainer
-            // But 'events' array drives rendering.
+            if (!isDrag) {
+                return;
+            }
+            card.classList.remove('dragging');
 
-            // Simple visual update:
-            // card.style.transform = `translate(${moveEvent.clientX - startX}px, ${moveEvent.clientY - startY}px)`;
-            // This is complex to get right with column logic.
-            // Let's implement "Click to Edit"? No user asked for drag.
-            const initialParent = card.parentElement;
+            // Hit test
+            const cols = document.querySelectorAll('.grid-col');
+            let foundColIndex = -1;
 
-            const dragProxy = card.cloneNode(true);
-            dragProxy.classList.add('dragging');
-            dragProxy.style.position = 'fixed';
-            dragProxy.style.width = getComputedStyle(card).width;
-            dragProxy.style.height = getComputedStyle(card).height;
-            dragProxy.style.zIndex = 1000;
-            dragProxy.style.pointerEvents = 'none';
-            dragProxy.style.display = 'none'; // Hide initially until moved
-            document.body.appendChild(dragProxy);
-
-            // Don't hide original yet. Only when moved.
-            // card.style.opacity = '0.3';
-
-            const moveAt = (pageX, pageY) => {
-                dragProxy.style.left = pageX - shiftX + 'px';
-                dragProxy.style.top = pageY - shiftY + 'px';
-            };
-
-            const onMove = (event) => {
-                // Check threshold to detect actual drag vs jitter
-                if (Math.abs(event.clientX - startX) > 5 || Math.abs(event.clientY - startY) > 5) {
-                    clearTimeout(longPressTimer); // Cancel delete
-                    isDrag = true;
-
-                    // Now start showing drag
-                    dragProxy.style.display = 'block';
-                    card.style.opacity = '0.3';
-                    moveAt(event.pageX, event.pageY);
+            cols.forEach((col, index) => {
+                const r = col.getBoundingClientRect();
+                if (event.clientX >= r.left && event.clientX <= r.right &&
+                    event.clientY >= r.top && event.clientY <= r.bottom) {
+                    foundColIndex = index;
                 }
-            };
+            });
 
-            const onUp = (event) => {
-                clearTimeout(longPressTimer);
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-                dragProxy.remove();
-                card.style.opacity = '1';
-                card.classList.remove('dragging');
+            if (foundColIndex === -1) {
+                return;
+            }
 
-                if (!isDrag) return; // Verify it was a drag, not just a click/long-click
+            // Identify Time
+            const containerRect = gridContainer.getBoundingClientRect();
+            const relY = event.clientY - containerRect.top - shiftY;
 
-                // Hit test
-                const cols = document.querySelectorAll('.grid-col');
-                let foundColIndex = -1;
+            let minutesFromStart = relY / PIXELS_PER_MIN;
+            let absoluteMinutes = minutesFromStart + (START_HOUR * 60);
+            absoluteMinutes = Math.round(absoluteMinutes / SNAP_MINUTES) * SNAP_MINUTES;
 
-                cols.forEach((col, index) => {
-                    const r = col.getBoundingClientRect();
-                    if (event.clientX >= r.left && event.clientX <= r.right &&
-                        event.clientY >= r.top && event.clientY <= r.bottom) {
-                        foundColIndex = index;
-                    }
-                });
+            if (absoluteMinutes < START_HOUR * 60) absoluteMinutes = START_HOUR * 60;
 
-                if (foundColIndex === -1) {
-                    // Revert if dropped outside (since we removed drag-to-delete)
-                    return;
-                }
+            const newStartTime = minutesToTimeString(absoluteMinutes);
 
-                // Identify Time
-                const containerRect = gridContainer.getBoundingClientRect();
-                const relY = event.clientY - containerRect.top - shiftY;
+            updateEvent(eventData.id, {
+                day: foundColIndex,
+                startTime: newStartTime
+            });
+        };
 
-                let minutesFromStart = relY / PIXELS_PER_MIN;
-                let absoluteMinutes = minutesFromStart + (START_HOUR * 60);
-                absoluteMinutes = Math.round(absoluteMinutes / SNAP_MINUTES) * SNAP_MINUTES;
-
-                if (absoluteMinutes < START_HOUR * 60) absoluteMinutes = START_HOUR * 60;
-
-                const newStartTime = minutesToTimeString(absoluteMinutes);
-
-                updateEvent(eventData.id, {
-                    day: foundColIndex,
-                    startTime: newStartTime
-                });
-            };
-
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-        });
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
 
     // Double click to EDIT
     card.addEventListener('dblclick', () => {
