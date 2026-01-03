@@ -1,7 +1,8 @@
 :root {
     --primary-color: #6200ea;
     --text-color: #333;
-    --border-color: #e0e0e0;
+    --border-color: #bdbdbd;
+    /* Darker for better visibility */
     --time-col-width: 60px;
     --header-height: 50px;
     --grid-row-height: 40px;
@@ -208,10 +209,11 @@ body {
     pointer-events: none;
 }
 
-font-size: 0.75rem;
-opacity: 0.8;
-margin-top: 2px;
-pointer-events: none;
+.event-time {
+    font-size: 0.75rem;
+    opacity: 0.8;
+    margin-top: 2px;
+    pointer-events: none;
 }
 
 /* Small Event Styles (<= 30 mins) */
